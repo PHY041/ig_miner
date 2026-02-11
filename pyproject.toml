@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "igminer"
+version = "0.1.0"
+description = "Fast, undetectable Instagram scraper powered by session cookies. No browser, no Selenium, no detection."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Haoyang Pang", email = "haoyang@canmarket.ai" },
+]
+keywords = ["instagram", "scraper", "hashtag", "social-media", "data-collection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+chrome = ["pycookiecheat>=0.7"]
+supabase = ["requests>=2.28"]
+all = ["pycookiecheat>=0.7"]
+
+[project.scripts]
+igminer = "igminer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/haoyangpang/igminer"
+Repository = "https://github.com/haoyangpang/igminer"
+Issues = "https://github.com/haoyangpang/igminer/issues"
