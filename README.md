@@ -1,18 +1,18 @@
-# igminer
+# ig_miner
 
 **Fast, undetectable Instagram scraper. No browser. No Selenium. No detection.**
 
 ```
-pip install igminer
-igminer auth            # one-time: extract cookies from Chrome
-igminer scrape travel   # scrape #travel — posts, images, comments, users
+pip install ig-miner
+ig-miner auth            # one-time: extract cookies from Chrome
+ig-miner scrape travel   # scrape #travel — posts, images, comments, users
 ```
 
 > We scraped **20,000+ posts** with full metadata, images, and comments for an academic research project. Zero bans. Zero CAPTCHAs.
 
 ---
 
-## Why igminer?
+## Why ig_miner?
 
 Every Instagram scraper in 2026 has the same problem: **they get detected and banned**.
 
@@ -20,9 +20,9 @@ Every Instagram scraper in 2026 has the same problem: **they get detected and ba
 - **instagrapi** — 476 open issues, constant breakage, ChallengeRequired errors
 - **Selenium/Playwright** — bot detection flags you in seconds
 
-igminer takes a different approach: **it uses your real browser session**.
+ig_miner takes a different approach: **it uses your real browser session**.
 
-| | igminer | instaloader | instagrapi | Apify |
+| | ig_miner | instaloader | instagrapi | Apify |
 |---|---|---|---|---|
 | Ban risk | Minimal | High | High | None (proxy) |
 | Speed | ~500 posts/min | ~50/min | ~200/min | ~100/min |
@@ -50,11 +50,17 @@ Chrome (logged in) → Extract session cookies → Pure HTTP requests
 ```
 
 1. You log into Instagram in Chrome (once)
-2. igminer extracts your session cookies
-3. All requests use these cookies with proper browser headers
+2. ig_miner extracts your session cookies
+3. All requests use these cookies with **proper browser headers** (`Sec-Fetch-*`, `x-ig-app-id`, `x-requested-with`)
 4. Instagram sees normal browsing activity from your account
 
 No headless browser. No WebDriver. No fingerprint to detect.
+
+### Why this actually works
+
+Most scrapers do a **programmatic login** — Instagram detects the login flow itself and flags you. ig_miner skips login entirely. It borrows the trusted session your real Chrome already established.
+
+The secret sauce is **Sec-Fetch headers**. Instagram's API validates that requests come from a genuine browser XHR context. Without `Sec-Fetch-Dest: empty`, `Sec-Fetch-Mode: cors`, and `x-requested-with: XMLHttpRequest`, the API returns HTML instead of JSON. No other scraper sends these correctly.
 
 ---
 
@@ -63,7 +69,7 @@ No headless browser. No WebDriver. No fingerprint to detect.
 ### Install
 
 ```bash
-pip install igminer
+pip install ig-miner
 ```
 
 ### Setup (one-time)
@@ -71,7 +77,7 @@ pip install igminer
 Log into Instagram in Chrome, then:
 
 ```bash
-igminer auth
+ig-miner auth
 # Saved 11 cookies to ig_cookies.json
 # sessionid: ...a8f3b2c1
 ```
@@ -80,29 +86,29 @@ igminer auth
 
 ```bash
 # Scrape top posts for a hashtag (~480 posts with 20 pages)
-igminer scrape travel --pages 20
+ig-miner scrape travel --pages 20
 
 # Multiple hashtags
-igminer scrape tokyo osaka kyoto --pages 10
+ig-miner scrape tokyo osaka kyoto --pages 10
 
 # Recent posts instead of top/viral
-igminer scrape fashion --tab recent
+ig-miner scrape fashion --tab recent
 
 # Text only (skip image downloads)
-igminer scrape food --no-images
+ig-miner scrape food --no-images
 ```
 
 ### Scrape comments
 
 ```bash
 # Scrape comments for the top 200 posts in your database
-igminer comments --limit 200
+ig-miner comments --limit 200
 ```
 
 ### Check stats
 
 ```bash
-igminer stats
+ig-miner stats
 #   Posts:          4,821
 #   Unique codes:   4,821
 #   Enriched users: 1,203
@@ -112,10 +118,10 @@ igminer stats
 
 ```bash
 # Run continuously — cycles through hashtags, scrapes comments, handles rate limits
-igminer daemon --hashtags travel tokyo food photography --target 50000
+ig-miner daemon --hashtags travel tokyo food photography --target 50000
 
 # Run in background
-nohup igminer daemon --target 100000 > daemon.log 2>&1 &
+nohup ig-miner daemon --target 100000 > daemon.log 2>&1 &
 ```
 
 ---
@@ -173,21 +179,21 @@ For each comment:
 ### SQLite (default — zero config)
 
 ```bash
-igminer scrape travel
-# Creates igminer.db in current directory
+ig-miner scrape travel
+# Creates ig_miner.db in current directory
 ```
 
 ### JSON files
 
 ```bash
-igminer scrape travel --storage json --output-dir ./data
+ig-miner scrape travel --storage json --output-dir ./data
 # Creates data/posts_20260210_143022.json
 ```
 
 ### Supabase (cloud database + image hosting)
 
 ```bash
-igminer scrape travel \
+ig-miner scrape travel \
   --storage supabase \
   --supabase-url https://xxx.supabase.co \
   --supabase-key sb_... \
@@ -253,9 +259,9 @@ CREATE INDEX idx_comments_post ON ig_comments(post_id);
 ## Python API
 
 ```python
-from igminer.cookies import load_cookies
-from igminer.api import fetch_hashtag_posts, fetch_comments, fetch_user_profile
-from igminer.storage import get_storage
+from ig_miner.cookies import load_cookies
+from ig_miner.api import fetch_hashtag_posts, fetch_comments, fetch_user_profile
+from ig_miner.storage import get_storage
 
 cookies = load_cookies("ig_cookies.json")
 storage = get_storage("sqlite", db_path="my_data.db")
@@ -282,10 +288,10 @@ storage.close()
 
 ## Rate limiting & safety
 
-igminer is built to be gentle:
+ig_miner is built to be gentle:
 
-- **Randomized delays** between requests (1.5–3s for posts, 10–25s between hashtags in daemon)
-- **Automatic backoff** on 429 (rate limit) responses — waits 30–60s
+- **Randomized delays** between requests (1.5-3s for posts, 10-25s between hashtags in daemon)
+- **Automatic backoff** on 429 (rate limit) responses — waits 30-60s
 - **Session detection** — if cookies expire, attempts auto-refresh from Chrome
 - **Graceful shutdown** — SIGTERM/SIGINT saves progress before stopping
 
@@ -301,8 +307,8 @@ Tips to avoid issues:
 ### Auto-extract from Chrome (macOS/Linux)
 
 ```bash
-igminer auth
-# Requires: pip install igminer[chrome]
+ig-miner auth
+# Requires: pip install ig-miner[chrome]
 ```
 
 ### Manual export

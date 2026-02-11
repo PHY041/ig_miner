@@ -41,7 +41,7 @@ def run_daemon(
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
 
-    pid_file = Path("igminer_daemon.pid")
+    pid_file = Path("ig_miner_daemon.pid")
     pid_file.write_text(str(os.getpid()))
 
     cookies = load_cookies(cookie_file)

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "igminer"
+name = "ig-miner"
 version = "0.1.0"
 description = "Fast, undetectable Instagram scraper powered by session cookies. No browser, no Selenium, no detection."
 readme = "README.md"
@@ -36,9 +36,9 @@ supabase = ["requests>=2.28"]
 all = ["pycookiecheat>=0.7"]
 
 [project.scripts]
-igminer = "igminer.cli:main"
+ig-miner = "ig_miner.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/haoyangpang/igminer"
-Repository = "https://github.com/haoyangpang/igminer"
-Issues = "https://github.com/haoyangpang/igminer/issues"
+Homepage = "https://github.com/PHY041/ig_miner"
+Repository = "https://github.com/PHY041/ig_miner"
+Issues = "https://github.com/PHY041/ig_miner/issues"

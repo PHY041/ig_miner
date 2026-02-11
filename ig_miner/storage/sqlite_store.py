@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 class SQLiteStorage(StorageBackend):
     """SQLite storage — the default. No setup required."""
 
-    def __init__(self, db_path: str = "igminer.db"):
+    def __init__(self, db_path: str = "ig_miner.db"):
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row

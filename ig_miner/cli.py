@@ -1,4 +1,4 @@
-"""Command-line interface for igminer."""
+"""Command-line interface for ig_miner."""
 
 import argparse
 import logging
@@ -23,14 +23,14 @@ def setup_logging(verbose: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="igminer",
+        prog="ig-miner",
         description=(
             "Fast, undetectable Instagram scraper. "
             "Uses session cookies — no browser, no Selenium, no detection."
         ),
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"igminer {__version__}",
+        "-V", "--version", action="version", version=f"ig-miner {__version__}",
     )
 
     sub = parser.add_subparsers(dest="command", help="Available commands")
@@ -102,8 +102,8 @@ def main():
         help="Storage backend (default: sqlite)",
     )
     parser.add_argument(
-        "--db", default="igminer.db",
-        help="SQLite database path (default: igminer.db)",
+        "--db", default="ig_miner.db",
+        help="SQLite database path (default: ig_miner.db)",
     )
     parser.add_argument(
         "--output-dir", default="output",
@@ -185,7 +185,7 @@ def main():
     if args.command == "scrape":
         cookies = load_cookies(args.cookies)
         log.info("=" * 60)
-        log.info(f"igminer v{__version__}")
+        log.info(f"ig-miner v{__version__}")
         log.info(f"Hashtags: {args.hashtags}")
         log.info(f"Pages:    {args.pages}/hashtag (~{args.pages * 24} posts)")
         log.info(f"Tab:      {args.tab}")
