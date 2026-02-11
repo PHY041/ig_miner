@@ -1,111 +1,144 @@
 # ig_miner
 
-**Fast, undetectable Instagram scraper. No browser. No Selenium. No detection.**
+**Lightweight Instagram data collection tool for academic research and analysis.**
 
-```
+> Built for researchers who need Instagram metadata (captions, hashtags, engagement, comments) at scale. Uses your own authenticated session — no third-party APIs, no proxies, no headless browsers.
+
+```bash
 pip install ig-miner
-ig-miner auth            # one-time: extract cookies from Chrome
-ig-miner scrape travel   # scrape #travel — posts, images, comments, users
+ig-miner auth            # one-time: extract cookies from your Chrome
+ig-miner scrape travel   # collect public posts from #travel
 ```
 
-> We scraped **20,000+ posts** with full metadata, images, and comments for an academic research project. Zero bans. Zero CAPTCHAs.
+> **Note**: This tool is intended for academic research, data science, and educational purposes. It only accesses **publicly available data** through your own authenticated Instagram session. Please read the [Responsible Use](#responsible-use) section before getting started.
 
 ---
 
-## Why ig_miner?
+## What is ig_miner?
 
-Every Instagram scraper in 2026 has the same problem: **they get detected and banned**.
+ig_miner is a Python tool that collects public Instagram data for research. It was originally built for a university information retrieval course project — we needed 20,000+ posts with captions, comments, and engagement metrics for building a search engine and training ML models.
 
-- **Instaloader** — login required, aggressive rate limiting, accounts get locked
-- **instagrapi** — 476 open issues, constant breakage, ChallengeRequired errors
-- **Selenium/Playwright** — bot detection flags you in seconds
+Existing tools kept breaking or getting rate-limited. So we built ig_miner with a different approach: **use your own browser's session cookies** to make requests exactly like your browser does.
 
-ig_miner takes a different approach: **it uses your real browser session**.
+### What data can you collect?
 
-| | ig_miner | instaloader | instagrapi | Apify |
-|---|---|---|---|---|
-| Ban risk | Minimal | High | High | None (proxy) |
-| Speed | ~500 posts/min | ~50/min | ~200/min | ~100/min |
-| Images | Full resolution | Thumbnails | Full | Full |
-| Comments | Yes | Limited | Yes | Yes |
-| User profiles | Yes | Yes | Yes | Yes |
-| Cost | Free | Free | Free | $49+/mo |
-| Requires login | Cookie only | Full login | Full login | No |
-| 24/7 daemon | Built-in | No | No | No |
-| Detection | Undetectable* | Detectable | Detectable | Proxy-based |
+| Data | Fields |
+|------|--------|
+| **Posts** | Shortcode, caption, hashtags, likes, comments count, views, location (name + lat/lng), timestamp, image URL |
+| **Comments** | Text, author, likes, timestamp |
+| **User profiles** | Username, bio, follower/following counts, post count, verification status |
+| **Images** | Full-resolution downloads (1440px+) |
 
-*Uses the same session as your real browser — Instagram cannot distinguish automated requests from manual browsing.
+### How is it different?
 
----
-
-## How it works
-
-```
-Chrome (logged in) → Extract session cookies → Pure HTTP requests
-                                                    ↓
-                                              Instagram API
-                                              (same as browser)
-                                                    ↓
-                                          SQLite / JSON / Supabase
-```
-
-1. You log into Instagram in Chrome (once)
-2. ig_miner extracts your session cookies
-3. All requests use these cookies with **proper browser headers** (`Sec-Fetch-*`, `x-ig-app-id`, `x-requested-with`)
-4. Instagram sees normal browsing activity from your account
-
-No headless browser. No WebDriver. No fingerprint to detect.
-
-### Why this actually works
-
-Most scrapers do a **programmatic login** — Instagram detects the login flow itself and flags you. ig_miner skips login entirely. It borrows the trusted session your real Chrome already established.
-
-The secret sauce is **Sec-Fetch headers**. Instagram's API validates that requests come from a genuine browser XHR context. Without `Sec-Fetch-Dest: empty`, `Sec-Fetch-Mode: cors`, and `x-requested-with: XMLHttpRequest`, the API returns HTML instead of JSON. No other scraper sends these correctly.
+| | ig_miner | instaloader | instagrapi |
+|---|---|---|---|
+| Auth method | Session cookies (from your browser) | Programmatic login | Programmatic login |
+| Rate limiting | Gentle built-in delays | Manual | Manual |
+| Comments API | Works (with proper headers) | Limited | Works |
+| Image quality | Full resolution | Thumbnails by default | Full |
+| 24/7 collection | Built-in daemon mode | No | No |
+| Storage | SQLite / JSON / Supabase | Files | Custom |
+| Setup | `pip install` + one command | `pip install` | `pip install` |
 
 ---
 
-## Quick start
+## Setup
 
-### Install
+### Step 1: Install
 
 ```bash
 pip install ig-miner
 ```
 
-### Setup (one-time)
+### Step 2: Authenticate (one-time)
 
-Log into Instagram in Chrome, then:
+ig_miner needs your Instagram session cookies. You have three options:
+
+#### Option A: Auto-extract from Chrome (Recommended)
+
+If you're logged into Instagram in Chrome:
 
 ```bash
+# macOS / Linux
+pip install ig-miner[chrome]
 ig-miner auth
-# Saved 11 cookies to ig_cookies.json
-# sessionid: ...a8f3b2c1
 ```
 
-### Scrape hashtags
+This reads cookies from Chrome's local storage. Your password is never accessed — only the session token.
+
+<details>
+<summary>Prerequisite for macOS</summary>
+
+Chrome must allow cookie access. If `ig-miner auth` fails with a keychain error, you may need to grant Terminal (or your IDE) access to Chrome's safe storage in System Settings → Privacy & Security → Full Disk Access.
+
+</details>
+
+#### Option B: Export manually from DevTools
+
+1. Open **instagram.com** in Chrome (make sure you're logged in)
+2. Press **F12** (or Cmd+Option+I on Mac) to open DevTools
+3. Go to **Application** tab → **Cookies** → `https://www.instagram.com`
+4. Find and copy these values into a file called `ig_cookies.json`:
+
+```json
+{
+  "sessionid": "paste_your_sessionid_here",
+  "csrftoken": "paste_your_csrftoken_here",
+  "ds_user_id": "paste_your_ds_user_id_here",
+  "mid": "paste_your_mid_here",
+  "ig_did": "paste_your_ig_did_here",
+  "rur": "paste_your_rur_here"
+}
+```
+
+> Only `sessionid` and `csrftoken` are strictly required. The others improve reliability.
+
+#### Option C: Use a browser extension
+
+Install [EditThisCookie](https://chromewebstore.google.com/detail/editthiscookie) or [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor), go to instagram.com, export all cookies as JSON, and save as `ig_cookies.json`.
+
+### Cookie lifespan
+
+Instagram session cookies typically last **60–90 days**. When they expire, just re-run `ig-miner auth` or re-export from DevTools. ig_miner will warn you if your session has expired.
+
+### Security note
+
+Your `ig_cookies.json` file contains your Instagram session. **Treat it like a password:**
+- It's in `.gitignore` by default — never commit it
+- Don't share it with anyone
+- If compromised, log out of Instagram in your browser (this invalidates the session)
+
+---
+
+## Usage
+
+### Collect posts by hashtag
 
 ```bash
-# Scrape top posts for a hashtag (~480 posts with 20 pages)
+# Collect top/popular posts (best for research — high engagement)
 ig-miner scrape travel --pages 20
 
-# Multiple hashtags
+# Collect recent posts (chronological)
+ig-miner scrape travel --tab recent --pages 10
+
+# Multiple hashtags at once
 ig-miner scrape tokyo osaka kyoto --pages 10
 
-# Recent posts instead of top/viral
-ig-miner scrape fashion --tab recent
-
-# Text only (skip image downloads)
-ig-miner scrape food --no-images
+# Metadata only (skip image downloads for faster collection)
+ig-miner scrape travel --no-images
 ```
 
-### Scrape comments
+Each page returns ~24 posts. So `--pages 20` collects up to ~480 posts per hashtag.
+
+### Collect comments
 
 ```bash
-# Scrape comments for the top 200 posts in your database
+# Collect comments for the top 200 posts (by likes) in your database
 ig-miner comments --limit 200
 ```
 
-### Check stats
+### Check your database
 
 ```bash
 ig-miner stats
@@ -114,21 +147,31 @@ ig-miner stats
 #   Enriched users: 1,203
 ```
 
-### 24/7 daemon mode
+### Continuous collection (daemon mode)
+
+For large-scale research datasets:
 
 ```bash
-# Run continuously — cycles through hashtags, scrapes comments, handles rate limits
-ig-miner daemon --hashtags travel tokyo food photography --target 50000
+# Collect continuously with built-in rate limiting and pauses
+ig-miner daemon --hashtags travel food photography --target 50000
 
-# Run in background
-nohup ig-miner daemon --target 100000 > daemon.log 2>&1 &
+# Run in background (persists after terminal close)
+nohup ig-miner daemon --target 50000 > collection.log 2>&1 &
 ```
+
+The daemon:
+- Cycles through your hashtag list (top posts → comments → recent posts)
+- Randomizes request timing (not robotic patterns)
+- Automatically backs off on rate limits (waits 30–60s)
+- Handles cookie expiration with auto-refresh
+- Stops gracefully on SIGTERM/SIGINT (Ctrl+C)
 
 ---
 
-## What you get
+## Data format
 
-For each post:
+### Posts
+
 ```json
 {
   "code": "CxR2a4Nv3",
@@ -147,7 +190,21 @@ For each post:
 }
 ```
 
-For each user:
+### Comments
+
+```json
+{
+  "id": "17890234567",
+  "post_id": "CxR2a4Nv3",
+  "username": "photo_enthusiast",
+  "text": "Incredible shot! The lighting is perfect",
+  "likes": 23,
+  "posted_at": "2025-11-15T12:45:00"
+}
+```
+
+### User profiles
+
 ```json
 {
   "username": "traveler_jane",
@@ -160,49 +217,41 @@ For each user:
 }
 ```
 
-For each comment:
-```json
-{
-  "id": "17890234567",
-  "post_id": "CxR2a4Nv3",
-  "username": "photo_enthusiast",
-  "text": "Incredible shot! The lighting is perfect",
-  "likes": 23,
-  "posted_at": "2025-11-15T12:45:00"
-}
-```
-
 ---
 
 ## Storage backends
 
-### SQLite (default — zero config)
+### SQLite (default)
+
+Zero config. Data is stored in `ig_miner.db` in the current directory.
 
 ```bash
 ig-miner scrape travel
-# Creates ig_miner.db in current directory
+# → ig_miner.db (SQLite, queryable with any SQL tool)
 ```
 
 ### JSON files
 
 ```bash
 ig-miner scrape travel --storage json --output-dir ./data
-# Creates data/posts_20260210_143022.json
+# → data/posts_20260210_143022.json
 ```
 
 ### Supabase (cloud database + image hosting)
 
+For teams or when you need cloud access to your dataset:
+
 ```bash
 ig-miner scrape travel \
   --storage supabase \
-  --supabase-url https://xxx.supabase.co \
-  --supabase-key sb_... \
+  --supabase-url https://your-project.supabase.co \
+  --supabase-key your_anon_key \
   --supabase-schema public \
   --supabase-bucket ig-images
 ```
 
 <details>
-<summary>Supabase SQL setup</summary>
+<summary>Supabase SQL schema</summary>
 
 ```sql
 CREATE TABLE ig_users (
@@ -264,112 +313,114 @@ from ig_miner.api import fetch_hashtag_posts, fetch_comments, fetch_user_profile
 from ig_miner.storage import get_storage
 
 cookies = load_cookies("ig_cookies.json")
-storage = get_storage("sqlite", db_path="my_data.db")
+storage = get_storage("sqlite", db_path="research_data.db")
 
-# Fetch posts
+# Collect posts
 posts = fetch_hashtag_posts("travel", cookies, max_pages=5, tab="top")
 for post in posts:
     storage.upsert_post(post)
-    print(f"{post['code']}: {post['likes']} likes — {post['caption'][:60]}")
+    print(f"{post['code']}: {post['likes']} likes")
 
-# Fetch comments
+# Collect comments
 comments = fetch_comments("CxR2a4Nv3", cookies)
-for c in comments:
-    print(f"@{c['username']}: {c['text'][:80]}")
 
-# Fetch user profile
+# Collect user profile
 profile = fetch_user_profile("natgeo", cookies)
-print(f"@natgeo: {profile['followers']:,} followers")
 
 storage.close()
 ```
 
 ---
 
-## Rate limiting & safety
+## Rate limiting
 
-ig_miner is built to be gentle:
+ig_miner is designed to be a good citizen of the Instagram platform:
 
-- **Randomized delays** between requests (1.5-3s for posts, 10-25s between hashtags in daemon)
-- **Automatic backoff** on 429 (rate limit) responses — waits 30-60s
-- **Session detection** — if cookies expire, attempts auto-refresh from Chrome
-- **Graceful shutdown** — SIGTERM/SIGINT saves progress before stopping
+- **Randomized delays** between all requests (1.5–3s for pages, 10–25s between hashtags)
+- **Automatic backoff** on HTTP 429 responses (waits 30–60s before retrying)
+- **Request patterns** are randomized to avoid predictable timing
+- **Daemon mode** includes 5–10 minute pauses between full cycles
 
-Tips to avoid issues:
-- Don't run more than 2 parallel instances
-- Keep page counts reasonable (20 pages = ~480 posts per hashtag)
-- The daemon mode handles all rate limiting automatically
-
----
-
-## Cookie management
-
-### Auto-extract from Chrome (macOS/Linux)
-
-```bash
-ig-miner auth
-# Requires: pip install ig-miner[chrome]
-```
-
-### Manual export
-
-If auto-extract doesn't work, export cookies manually:
-
-1. Open Instagram in Chrome
-2. Open DevTools → Application → Cookies
-3. Copy these cookies into `ig_cookies.json`:
-
-```json
-{
-  "sessionid": "your_session_id",
-  "csrftoken": "your_csrf_token",
-  "ds_user_id": "your_user_id",
-  "mid": "...",
-  "ig_did": "..."
-}
-```
-
-Only `sessionid` and `csrftoken` are required. Sessions last ~90 days.
+**Recommendations:**
+- Run at most 1–2 instances simultaneously
+- Use `--pages 20` or less per hashtag for reasonable collection sizes
+- The daemon mode is already tuned for sustainable long-running collection
 
 ---
 
-## Use cases
+## Responsible use
 
-- **Academic research** — Collect Instagram data for NLP, sentiment analysis, information retrieval
-- **Market research** — Analyze hashtag trends, engagement patterns, competitor content
-- **Dataset creation** — Build image-caption datasets for ML/AI training
-- **Social listening** — Monitor brand mentions and user sentiment
-- **Content analysis** — Study visual trends across hashtags and locations
+This tool was built for legitimate research. We ask that you use it responsibly:
+
+**Do:**
+- Use for academic research, data science, and educational projects
+- Collect only publicly available data
+- Respect rate limits (ig_miner handles this automatically)
+- Anonymize personal data in published research
+- Cite your data collection methodology in papers
+- Delete collected data when your research is complete
+
+**Don't:**
+- Scrape private or protected accounts
+- Use collected data for commercial purposes without proper authorization
+- Build surveillance tools or stalking applications
+- Sell or redistribute personal data
+- Spam, harass, or contact scraped users
+- Circumvent Instagram's access controls beyond what your session allows
+
+**Legal context:**
+- This tool accesses the same public data you see when browsing Instagram in your browser
+- It uses your own authenticated session — no credentials are shared or stored beyond your local machine
+- Academic research involving publicly available social media data is generally protected, but check your institution's IRB (Institutional Review Board) requirements
+- Comply with GDPR, CCPA, and other applicable data protection laws in your jurisdiction
+
+If you're using this for published research, consider adding a data collection ethics statement to your paper.
 
 ---
 
-## Disclaimer
+## How it works (technical)
 
-This tool is for **educational and research purposes only**. It accesses publicly available data through Instagram's web interface using authenticated sessions.
+ig_miner makes HTTP requests to Instagram's internal web API using your session cookies. The key technical details:
 
-- Respect Instagram's Terms of Service
-- Don't scrape private accounts
-- Don't use collected data for harassment or spam
-- Comply with applicable data protection laws (GDPR, CCPA, etc.)
-- Rate limit your requests to avoid service disruption
+1. **Session cookies** from your browser provide authentication (no programmatic login needed)
+2. **Browser-identical headers** including `Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `x-ig-app-id`, and `x-requested-with` ensure API compatibility
+3. **Hashtag sections API** (`/api/v1/tags/{tag}/sections/`) returns paginated post data
+4. **Comments API** (`/api/v1/media/{pk}/comments/`) returns threaded comments
+5. **Profile API** (`/api/v1/users/web_profile_info/`) returns public user metadata
 
-The authors are not responsible for misuse of this tool.
+All endpoints are the same ones Instagram's web app uses when you browse normally.
 
 ---
 
 ## Contributing
 
-PRs welcome! Areas we'd love help with:
+Contributions welcome! Areas we'd appreciate help with:
 
 - [ ] Windows cookie extraction testing
-- [ ] Firefox cookie support
-- [ ] Export to CSV/Parquet
-- [ ] Reel/video metadata scraping
-- [ ] Location-based scraping
+- [ ] Firefox / Safari cookie support
+- [ ] Export to CSV / Parquet / HuggingFace datasets
+- [ ] Reel / video metadata collection
+- [ ] Location-based collection
 - [ ] Async support (aiohttp)
+- [ ] Better documentation and examples
+
+---
+
+## Citation
+
+If you use ig_miner in academic work, please cite:
+
+```bibtex
+@software{ig_miner,
+  author = {Pang, Haoyang},
+  title = {ig\_miner: Lightweight Instagram Data Collection for Research},
+  year = {2026},
+  url = {https://github.com/PHY041/ig_miner}
+}
+```
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
