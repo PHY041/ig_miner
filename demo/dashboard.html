@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ig_miner — Dataset Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --card: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #6b6b80;
+    --accent: #6366f1;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+  }
+
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 48px 0 32px;
+  }
+  .header h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header .subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 400;
+  }
+  .header .subtitle a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .stat-card .number {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .stat-card:nth-child(1) .number { color: var(--accent); }
+  .stat-card:nth-child(2) .number { color: var(--green); }
+  .stat-card:nth-child(3) .number { color: var(--orange); }
+  .stat-card:nth-child(4) .number { color: var(--pink); }
+  .stat-card .label {
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* Grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card h2 {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+
+  /* Map */
+  .map-container {
+    margin: 16px 0;
+  }
+  #map {
+    height: 420px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .leaflet-popup-content-wrapper {
+    background: var(--card) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    font-family: 'SF Mono', monospace !important;
+    font-size: 12px !important;
+  }
+  .leaflet-popup-tip { background: var(--card) !important; }
+
+  /* Chart canvas */
+  .chart-wrap { position: relative; height: 260px; }
+
+  /* Full-width card */
+  .card-full {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .card-full h2 {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .timeline-wrap { position: relative; height: 200px; }
+
+  /* Top posts table */
+  .top-posts { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .top-posts th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .top-posts td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .top-posts tr:last-child td { border-bottom: none; }
+  .top-posts .likes { color: var(--pink); font-weight: 600; }
+  .top-posts .username { color: var(--accent2); }
+  .top-posts .caption {
+    color: var(--muted);
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px 0 24px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent);
+  }
+
+  /* Cluster styles */
+  .marker-cluster-small {
+    background-color: rgba(99, 102, 241, 0.3) !important;
+  }
+  .marker-cluster-small div {
+    background-color: rgba(99, 102, 241, 0.7) !important;
+    color: white !important;
+    font-family: 'SF Mono', monospace !important;
+    font-size: 12px !important;
+  }
+  .marker-cluster-medium {
+    background-color: rgba(167, 139, 250, 0.3) !important;
+  }
+  .marker-cluster-medium div {
+    background-color: rgba(167, 139, 250, 0.7) !important;
+    color: white !important;
+    font-family: 'SF Mono', monospace !important;
+    font-size: 12px !important;
+  }
+  .marker-cluster-large {
+    background-color: rgba(244, 114, 182, 0.3) !important;
+  }
+  .marker-cluster-large div {
+    background-color: rgba(244, 114, 182, 0.7) !important;
+    color: white !important;
+    font-family: 'SF Mono', monospace !important;
+    font-size: 12px !important;
+  }
+
+  @media (max-width: 768px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>ig_miner</h1>
+    <p class="subtitle">
+      Dataset collected with <a href="https://github.com/PHY041/ig_miner">ig_miner</a>
+      &mdash; lightweight Instagram data collection for research
+    </p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="number">11,616</div>
+      <div class="label">Posts collected</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">4,222</div>
+      <div class="label">Unique users</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">1,000+</div>
+      <div class="label">Geotagged posts</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">137</div>
+      <div class="label">Hashtags tracked</div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div class="card-full map-container">
+    <h2>Geotagged posts &mdash; where the data comes from</h2>
+    <div id="map"></div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>Engagement distribution</h2>
+      <div class="chart-wrap"><canvas id="engagementChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Top hashtags</h2>
+      <div class="chart-wrap"><canvas id="hashtagChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="card-full">
+    <h2>Collection timeline &mdash; posts by month</h2>
+    <div class="timeline-wrap"><canvas id="timelineChart"></canvas></div>
+  </div>
+
+  <!-- Top Posts -->
+  <div class="card-full">
+    <h2>Top posts by engagement</h2>
+    <table class="top-posts">
+      <thead>
+        <tr>
+          <th>Likes</th>
+          <th>User</th>
+          <th>Caption</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody id="topPostsBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>
+      Built with <a href="https://github.com/PHY041/ig_miner">ig_miner</a>
+      &mdash; session cookie-based Instagram data collection for academic research
+    </p>
+    <p style="margin-top: 4px;">Data collected Feb 2026 | Only publicly available posts</p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA (baked in from Supabase)
+// ═══════════════════════════════════════════
+
+const MAP_MARKERS = [{"lat": 22.5059, "lng": 113.9119, "user": "mecaexclusive", "likes": 1, "loc": "Shenzhen, Guangdong, China", "code": "DUIV9gFEcFH"}, {"lat": 31.0755, "lng": 121.4882, "user": "nicolefromkorea", "likes": 86, "loc": "Shanghai,china", "code": "DUYSoebgZLT"}, {"lat": 24.7767, "lng": 110.4885, "user": "jasmine_pirsch", "likes": 779, "loc": "Yangshuo,Guilin,China", "code": "DQwpSOgCAxD"}, {"lat": 24.7767, "lng": 110.4885, "user": "magalitaroucatravel", "likes": 877, "loc": "Yangshuo,Guilin,China", "code": "CSFNqj7shuO"}, {"lat": 31.0755, "lng": 121.4882, "user": "chinaluxsh", "likes": 438, "loc": "Shanghai,china", "code": "DUF-IQmDDlu"}, {"lat": 24.7767, "lng": 110.4885, "user": "alwaysturquoised", "likes": 583, "loc": "Yangshuo,Guilin,China", "code": "CNpkbltDlIw"}, {"lat": 29.5724, "lng": 106.5772, "user": "thaizhongphotochina.bypeipei", "likes": 717, "loc": "Hongyadong, Chongqing China", "code": "DUVgrpij6VT"}, {"lat": 30.6674, "lng": 104.0841, "user": "peetsirapapa", "likes": 3, "loc": "Chengdu, China", "code": "DUiX_N7jyzz"}, {"lat": 23.0032, "lng": 113.3015, "user": "ryan_at_7am", "likes": 7, "loc": "Guangzhou City ,China", "code": "DUHe-IIiY0n"}, {"lat": 29.8313, "lng": 106.4263, "user": "the.travel.unicorns", "likes": 3, "loc": "China\u4e2d\u56fd", "code": "DUE6_qlDsgG"}, {"lat": 44.4108, "lng": 84.9058, "user": "mickiechae", "likes": 21, "loc": "\u5b89\u96c6\u6d77\u5927\u5cfd\u8c37", "code": "DUNLeenEZuL"}, {"lat": 31.0755, "lng": 121.4882, "user": "galina_vents", "likes": 296, "loc": "Shanghai,china", "code": "DUgFbChkTBl"}, {"lat": 42.8675, "lng": 130.358, "user": "emily.in.china", "likes": 31, "loc": "\u73f2\u6625\u9632\u5ddd\u666f\u533a", "code": "DUk0FQLgpZh"}, {"lat": 29.5531, "lng": 106.5435, "user": "jjasminee.tan", "likes": 207, "loc": "Chongqing, China", "code": "DUYlzjcEqUR"}, {"lat": 29.5727, "lng": 106.5447, "user": "chongqing001", "likes": 6260, "loc": "China Chongqing", "code": "DSTLPJoEijE"}, {"lat": 40.7592, "lng": -73.9784, "user": "chinese_with_lily", "likes": 436, "loc": "New York City", "code": "DSm1wZ6khuY"}, {"lat": 30.7211, "lng": 120.058, "user": "3m0110", "likes": 3, "loc": "Jingshan, Zhejiang, China", "code": "DUTbFEgCRVI"}, {"lat": 29.5531, "lng": 106.5435, "user": "aloharthur", "likes": 1421, "loc": "Chongqing, China", "code": "DPwLNLpkrSp"}, {"lat": 31.416, "lng": 102.9853, "user": "hannahuangg", "likes": 3, "loc": "Bipenggou", "code": "DSVQ0suEp1d"}, {"lat": 31.2251, "lng": 121.4702, "user": "seek.tours", "likes": 196, "loc": "China (\u4e2d\u56fd)", "code": "DUaRwgND_hF"}, {"lat": 24.7767, "lng": 110.4885, "user": "unchartedbackpacker", "likes": 6139, "loc": "Yangshuo,Guilin,China", "code": "DTGMGb9D2NJ"}, {"lat": 35, "lng": 103, "user": "ronald_soethje", "likes": 20962, "loc": "China", "code": "DPrdv0WDLOu"}, {"lat": 45.7682, "lng": 126.6213, "user": "itsmepyta", "likes": 12, "loc": "Saint Sophia Cathedral, Harbin", "code": "DUFKs1qE7f2"}, {"lat": 27.8119, "lng": 99.6658, "user": "natalieelim", "likes": 504, "loc": "\u9999\u683c\u91cc\u62c9\u7d0d\u5e15\u6d77\u5927\u8349\u539f", "code": "DQgywfxEamx"}, {"lat": 31.2382, "lng": 121.4843, "user": "lleezza__", "likes": 850, "loc": "\u4e0a\u6d77 \u5916\u7058 the Bund Shanghai", "code": "DTxQ_rDkwbh"}, {"lat": 29.8313, "lng": 106.4263, "user": "andreitasaot", "likes": 300, "loc": "China\u4e2d\u56fd", "code": "C7J-xGAJ0my"}, {"lat": 39.9289, "lng": 116.388, "user": "partyzzzan", "likes": 3016, "loc": "Beijing, China", "code": "DR9RBhCiNDp"}, {"lat": 23.1242, "lng": 113.2638, "user": "namo_snowqueen", "likes": 80, "loc": "\u5317\u4eac\u8def\u6b65\u884c\u8857 Beijing Road Walking Street", "code": "DUipht9kl7u"}, {"lat": 31.0755, "lng": 121.4882, "user": "kevin_chen_tko", "likes": 3, "loc": "Shanghai,china", "code": "DTAHORHiLB1"}, {"lat": 31.2104, "lng": 121.4228, "user": "hheejinkimm", "likes": 1795, "loc": "Columbia Circle \u4e0a\u751f\u65b0\u6240", "code": "DUK6i2VEmhN"}, {"lat": 13.7474, "lng": 100.6057, "user": "pawiswow", "likes": 7821, "loc": "Bangkok", "code": "DTXQjWakZpY"}, {"lat": 31.0755, "lng": 121.4882, "user": "here_film", "likes": 2653, "loc": "Shanghai,china", "code": "DUfohB8kj_o"}, {"lat": 31.0755, "lng": 121.4882, "user": "cassheridan", "likes": 896, "loc": "Shanghai,china", "code": "DUTvmoGkkn1"}, {"lat": 31.2287, "lng": 121.4872, "user": "wsebastiant", "likes": 3, "loc": "Yuyuan Garden - \u4e0a\u6d77\u8c6b\u5712", "code": "DUk9PChknzs"}, {"lat": 31.2371, "lng": 121.487, "user": "ursulavidal_", "likes": 182, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DUWFQL_CE0r"}, {"lat": 39.9289, "lng": 116.388, "user": "elikhandro", "likes": 3456, "loc": "Beijing, China", "code": "DRF0Li4AkCS"}, {"lat": 23.3871, "lng": 113.2992, "user": "ikahuang", "likes": 327, "loc": "Guangzhou Baiyun International Airport \u5e83\u5dde\u767d\u96f2\u56fd\u969b\u7a7a\u6e2f", "code": "DRuJQsJk7M-"}, {"lat": 29.1351, "lng": 110.481, "user": "asianlife_fr", "likes": 629, "loc": "Zhangjiajie \u5f20\u5bb6\u754c", "code": "DRzBTDiEsUb"}, {"lat": 29.5833, "lng": 103.517, "user": "jasmine_pirsch", "likes": 4002, "loc": "Mount Emei, Sichuan, China", "code": "DR9LONEiFHs"}, {"lat": 31.2389, "lng": 121.4872, "user": "dnsangelique", "likes": 5, "loc": "The Bund", "code": "DUDO6EIk2Am"}, {"lat": 35, "lng": 103, "user": "emifitworld", "likes": 3, "loc": "China", "code": "DRuIv_dERT1"}, {"lat": 23.1106, "lng": 113.2376, "user": "asistenliburan", "likes": 2, "loc": "Shamian Island \u6c99\u9762\u5c9b", "code": "DUac5ZPknf4"}, {"lat": 36.2886, "lng": 120.4195, "user": "inviaggioconnik", "likes": 1178, "loc": "Qingdao \u9752\u5c9b", "code": "DQ35o8vjTi_"}, {"lat": 31.144, "lng": 121.657, "user": "epiechan", "likes": 3161, "loc": "Shanghai Disneyland Park", "code": "DShbjJREvLN"}, {"lat": 29.2944, "lng": 117.1912, "user": "lu_jonathan", "likes": 3096, "loc": "\u666f\u5fb7\u9547 Jingdezhen", "code": "DSXzkhOCWEm"}, {"lat": 31.1528, "lng": 121.8041, "user": "angels_cheunjai", "likes": 805, "loc": "Shanghai Pudong International Airport \u4e0a\u6d77\u6d66\u6771\u570b\u969b\u6a5f\u5834", "code": "DUIX-NmE44J"}, {"lat": 31.0755, "lng": 121.4882, "user": "foodie_or_fatty", "likes": 137, "loc": "Shanghai,china", "code": "DUaBdAWgSUn"}, {"lat": 3.0659, "lng": 101.6225, "user": "chinadestinations", "likes": 152, "loc": "Guilin,china", "code": "DUdtnX3jR9S"}, {"lat": 31.2304, "lng": 121.4586, "user": "vnana0108", "likes": 761, "loc": "\u4e0a\u6d77\u5174\u4e1a\u592a\u53e4\u6c47", "code": "DTNXPfREnP3"}, {"lat": 14.5363, "lng": 121.0595, "user": "ekaterinasibpilgrim", "likes": 4, "loc": "China", "code": "DULTIc9iZ-7"}, {"lat": 24.9139, "lng": 118.586, "user": "koshintei", "likes": 698, "loc": "Quanzhou, Fujian, China", "code": "DR19CoHkZO0"}, {"lat": 29.5727, "lng": 106.5447, "user": "chongqing001", "likes": 8502, "loc": "China Chongqing", "code": "DR9txuIkaCA"}, {"lat": 35, "lng": 103, "user": "helloomelissa", "likes": 397, "loc": "China", "code": "DUWWhoYErPe"}, {"lat": 39.9289, "lng": 116.388, "user": "vanvincere", "likes": 38, "loc": "Beijing, China", "code": "DUkowWSDz0d"}, {"lat": 31.2769, "lng": 121.4758, "user": "drewzhu15", "likes": 1754, "loc": "Hongkou, Shanghai, China", "code": "DUSsee9ErOf"}, {"lat": 24.7767, "lng": 110.4885, "user": "tina_andayesh", "likes": 1033, "loc": "Yangshuo,Guilin,China", "code": "DLmtAMpTqAk"}, {"lat": 24.7767, "lng": 110.4885, "user": "chinainsider", "likes": 672, "loc": "Yangshuo,Guilin,China", "code": "DPlt7C2ktfS"}, {"lat": 39.91, "lng": 116.3936, "user": "danwen001", "likes": 21, "loc": "Imperial Ancestral Temple", "code": "DUiYV4MjOPx"}, {"lat": 25.8066, "lng": 110.1486, "user": "maureen_csnd", "likes": 3, "loc": "\u5927\u5be8 - Dazhai Village", "code": "DUbUBYQDT6d"}, {"lat": 39.1437, "lng": 117.1747, "user": "laowaime", "likes": 523, "loc": "Tianjin, China", "code": "ClRmmQEoZPp"}, {"lat": 31.0755, "lng": 121.4882, "user": "duoeats.sg", "likes": 51, "loc": "Shanghai,china", "code": "DUNgem2CRBx"}, {"lat": 31.2401, "lng": 121.4931, "user": "laurabruehl_", "likes": 3004, "loc": "Shanghai, China", "code": "DTfOBRjDUG8"}, {"lat": 31.0456, "lng": 121.4, "user": "tyrpwcmeen", "likes": 1800, "loc": "Shanghai, Chaina", "code": "DT7lTyVEusU"}, {"lat": 29.5531, "lng": 106.5435, "user": "hongsie", "likes": 3, "loc": "Chongqing, China", "code": "DUfQuGfD6Nq"}, {"lat": 43.7617, "lng": -79.41, "user": "lawlam.eats", "likes": 1374, "loc": "Yonge And Sheppard", "code": "DUdZKvhAEjL"}, {"lat": 31.1463, "lng": 121.6547, "user": "07___06___", "likes": 103, "loc": "Shanghai Disney Resort \u4e28\u4e0a\u6d77\u8fea\u58eb\u5c3c\u5ea6\u5047\u533a", "code": "DUkt2HbEk3p"}, {"lat": 31.2371, "lng": 121.487, "user": "ekaterynamalahova", "likes": 623, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DTfVg6PDAez"}, {"lat": 27.1889, "lng": 100.1049, "user": "dewlog_", "likes": 1140, "loc": "Tiger Leaping Gorge", "code": "DTNOSrcD7L4"}, {"lat": 31.0755, "lng": 121.4882, "user": "chinaluxsh", "likes": 786, "loc": "Shanghai,china", "code": "DUfT74gDKlp"}, {"lat": 35, "lng": 103, "user": "wiwa_b", "likes": 1687, "loc": "China", "code": "DUNcFSwlLy-"}, {"lat": 31.0755, "lng": 121.4882, "user": "tarnzinq", "likes": 3, "loc": "Shanghai,china", "code": "DUdAwI0DCPk"}, {"lat": 23.1167, "lng": 113.25, "user": "foodie_or_fatty", "likes": 29, "loc": "Guangzhou, China", "code": "DUfbuS4gVA2"}, {"lat": 31.2371, "lng": 121.487, "user": "jack_choco", "likes": 2169, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DSyqMavCQmZ"}, {"lat": 31.2096, "lng": 121.4647, "user": "natashalzw", "likes": 1974, "loc": "Shanghai", "code": "DTo-kuYj4_M"}, {"lat": 29.1873, "lng": 104.782, "user": "travel2china88", "likes": 475, "loc": "\u56db\u5ddd\u81ea\u8d21", "code": "DUil4OeD1ty"}, {"lat": 31.3162, "lng": 120.6603, "user": "susu.na29", "likes": 3, "loc": "Suzhou, China", "code": "DUI2Wf7Elnx"}, {"lat": 39.9289, "lng": 116.388, "user": "irisabv", "likes": 738, "loc": "Beijing, China", "code": "DTNdhjKjKIp"}, {"lat": 24.8293, "lng": 110.3832, "user": "anoushkalila", "likes": 3003, "loc": "Fuli Bridge", "code": "DK_sxETsb3t"}, {"lat": 39.9289, "lng": 116.388, "user": "viviaannw", "likes": 659, "loc": "Beijing, China", "code": "DSomWWZiULc"}, {"lat": 24.7767, "lng": 110.4885, "user": "jasmine_pirsch", "likes": 682, "loc": "Yangshuo,Guilin,China", "code": "DPZItGsCAaG"}, {"lat": 45.75, "lng": 126.633, "user": "natadecoco_ee", "likes": 3, "loc": "Harbin, China", "code": "DUaj7C7gUSh"}, {"lat": 31.1667, "lng": 121.4667, "user": "chinaluxsh", "likes": 3138, "loc": "Shanghai", "code": "DT-DEtrjKkH"}, {"lat": 22.5584, "lng": 114.0993, "user": "laowaime", "likes": 1166, "loc": "Shenzhen, Guangdong", "code": "CjlD2MwI1AC"}, {"lat": 13.6504, "lng": 101.0927, "user": "by.moowan", "likes": 649, "loc": "Beijing , China", "code": "DUCjpEkiUvs"}, {"lat": 29.5352, "lng": 107.4023, "user": "nicobon_in_japan", "likes": 85, "loc": "Chongqing", "code": "DUV4eewk_Af"}, {"lat": 25.2706, "lng": 110.292, "user": "kevin_tsao", "likes": 21, "loc": "Guilin", "code": "DUUDSPwDZO7"}, {"lat": 31.2518, "lng": 121.502, "user": "jaehyun_j_h", "likes": 135, "loc": "Banyan Tree Shanghai On The Bund", "code": "DUaYLz9kWlc"}, {"lat": 31.0755, "lng": 121.4882, "user": "lisavshanghae", "likes": 258, "loc": "Shanghai,china", "code": "DUJ9yxNiICY"}, {"lat": 29.5531, "lng": 106.5435, "user": "aloharthur", "likes": 1060, "loc": "Chongqing, China", "code": "DTiEoTBkw_v"}, {"lat": 30.6674, "lng": 104.0841, "user": "thelostmonkeyy", "likes": 2150, "loc": "Chengdu, China", "code": "DUX_yLAEaqZ"}, {"lat": 31.1135, "lng": 121.0515, "user": "fionnac", "likes": 3, "loc": "Zhujiajiao Old Town \u6731\u5bb6\u89d2", "code": "DUG6Tz6kqBT"}, {"lat": 31.2347, "lng": 121.4078, "user": "hulubeef", "likes": 1, "loc": "\u73af\u7403\u6e2f Global Harbor", "code": "DUiNzetExiX"}, {"lat": 36.0564, "lng": 103.792, "user": "wildyogisarina", "likes": 4, "loc": "Lanzhou, China", "code": "DUc0kDgkTAv"}, {"lat": 10.8018, "lng": 106.7213, "user": "superspotsmedia", "likes": 7791, "loc": "\u4e0a\u6d77", "code": "DTaNbiygcFo"}, {"lat": 29.5727, "lng": 106.5447, "user": "chongqing001", "likes": 5902, "loc": "China Chongqing", "code": "DS7PbXDj2SD"}, {"lat": 29.5352, "lng": 107.4023, "user": "veraniaflorencia", "likes": 83, "loc": "Chongqing", "code": "DUkihWmk6Tz"}, {"lat": 25.2774, "lng": 110.2898, "user": "long.explorer", "likes": 15043, "loc": "Guilin, China", "code": "C_522OXoBks"}, {"lat": 24.779, "lng": 110.4896, "user": "didigu78", "likes": 1830, "loc": "Li River, Yangshuo, Guilin", "code": "DP3kTE1jU_g"}, {"lat": 31.2387, "lng": 121.4981, "user": "by.min86", "likes": 603, "loc": "Shanghai IFC |\u4e0a\u6d77\u56fd\u91d1\u4e2d\u5fc3", "code": "DTpGqYQE9ul"}, {"lat": 25.2598, "lng": 51.561, "user": "kimiesdiaries", "likes": 3667, "loc": "Chong Qing, China", "code": "DS1KZfvk5WU"}, {"lat": 29.5352, "lng": 107.4023, "user": "asianlife_fr", "likes": 249, "loc": "Chongqing", "code": "DUVVR36gmXj"}, {"lat": 38.9207, "lng": 121.6284, "user": "dj_birabira", "likes": 70, "loc": "\u5927\u8fde\u7ad9 Dalian Railway Station", "code": "DUQ4qERkzBP"}, {"lat": 31.0755, "lng": 121.4882, "user": "kwangpattra", "likes": 1833, "loc": "Shanghai,china", "code": "DTFhfHXD7gZ"}, {"lat": 1.6647, "lng": 103.6466, "user": "whereistarablog", "likes": 140, "loc": "Fujian, China", "code": "DULsumvjIwJ"}, {"lat": 43.831, "lng": 87.59, "user": "a.witonophotos", "likes": 3, "loc": "Xinjiang Province, China", "code": "DUk8KGPk74v"}, {"lat": 24.7767, "lng": 110.4885, "user": "re.belle.fleur", "likes": 708, "loc": "Yangshuo,Guilin,China", "code": "DNz5ejIUM3N"}, {"lat": 39.882, "lng": 116.4072, "user": "chinadestinations", "likes": 432, "loc": "\u5929\u575b\u516c\u56ed Temple of Heaven", "code": "DUUCJRjlRRC"}, {"lat": 30.9967, "lng": 102.8419, "user": "mindishappy", "likes": 930, "loc": "\u56db\u59d1\u5a18\u5c71 Mount Siguniang", "code": "DRjwytPk6hA"}, {"lat": 30.6237, "lng": 119.7341, "user": "shiki_shiki_shiki", "likes": 572, "loc": "Hello Kitty Park \u6d59\u6c5f\u7701\u5b89\u5409\u770c", "code": "DTfoQIEEwur"}, {"lat": 39.9289, "lng": 116.388, "user": "elikhandro", "likes": 1019, "loc": "Beijing, China", "code": "DT8_nZGAnes"}, {"lat": 31.2383, "lng": 121.477, "user": "darrenkudo", "likes": 311, "loc": "Shanghai Nanjing East Road Pedestrian Street", "code": "DQoPVj6kz6J"}, {"lat": 12.9714, "lng": 80.1516, "user": "tamil___desi___nadni", "likes": 416, "loc": "Chennai,Tamilnadu", "code": "DUk6GYlDNqv"}, {"lat": 31.2371, "lng": 121.487, "user": "min.ver1", "likes": 3, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DTo6CGtEmas"}, {"lat": 41.3249, "lng": 19.8179, "user": "henribanushi_", "likes": 26, "loc": "Tirana, Albania", "code": "DUmG6aeiBGu"}, {"lat": 43.7311, "lng": -79.5103, "user": "elikhandro", "likes": 589, "loc": "Shang Hai, China", "code": "DTunOu0gu0f"}, {"lat": 31.2371, "lng": 121.487, "user": "81.room", "likes": 3, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DTNIOfJko3V"}, {"lat": 25.309, "lng": 110.2961, "user": "pragatitravels", "likes": 8, "loc": "Guilin, China", "code": "DUTCjHOEkKl"}, {"lat": 30.6667, "lng": 104.067, "user": "junialyssa", "likes": 3, "loc": "Chengdu, Sichuan", "code": "DUfXB6XErE1"}, {"lat": 30.25, "lng": 120.167, "user": "chelseycjay", "likes": 1588, "loc": "Hangzhou, China", "code": "DTkYdZOEmn1"}, {"lat": 35, "lng": 103, "user": "helloomelissa", "likes": 805, "loc": "China", "code": "DQ-MyK0Elwz"}, {"lat": 24.7767, "lng": 110.4885, "user": "expedition_east", "likes": 1395, "loc": "Yangshuo,Guilin,China", "code": "DPjrnpiAazi"}, {"lat": 25.309, "lng": 110.2961, "user": "ll_chopstick", "likes": 0, "loc": "Guilin, China", "code": "DUKaN2BER_x"}, {"lat": 29.5531, "lng": 106.5435, "user": "laowaime", "likes": 630, "loc": "Chongqing, China", "code": "CSHWL5KnmTC"}, {"lat": -6.234, "lng": 106.8237, "user": "bayasaa7977", "likes": 592, "loc": "Bipenggou National Park", "code": "C75TPlKP81g"}, {"lat": 31.2096, "lng": 121.4647, "user": "lera_life_china", "likes": 165, "loc": "Shanghai", "code": "DUkoWOBjwJ0"}, {"lat": 39.9289, "lng": 116.388, "user": "elikhandro", "likes": 1940, "loc": "Beijing, China", "code": "DT0nzaWDWXu"}, {"lat": 26.24, "lng": 109.717, "user": "asianlife_fr", "likes": 623, "loc": "Furong, Hunan, China", "code": "DTcjP4bAp1y"}, {"lat": 28.2, "lng": 112.967, "user": "laowaime", "likes": 1184, "loc": "Changsha city, Hunan", "code": "ClbmEtioozJ"}, {"lat": 13.7519, "lng": 100.4723, "user": "iiceeeeeee_", "likes": 16225, "loc": "\u0e2a\u0e19\u0e32\u0e21\u0e1a\u0e34\u0e19\u0e2a\u0e38\u0e27\u0e23\u0e23\u0e13\u0e20\u0e39\u0e21\u0e34 Suvannaphumi Airport", "code": "DSfHKDmkl92"}, {"lat": 29.8313, "lng": 106.4263, "user": "the.travel.unicorns", "likes": 3, "loc": "China\u4e2d\u56fd", "code": "DUPB0loDEBw"}, {"lat": 30.6674, "lng": 104.0841, "user": "thatfoodcray", "likes": 3, "loc": "Chengdu, China", "code": "DUgVuybAcD_"}, {"lat": 36.0833, "lng": 120.333, "user": "onjana", "likes": 5, "loc": "Qingdao, Shandong", "code": "DUioszBk6Ag"}, {"lat": 30.25, "lng": 120.167, "user": "panvelvet", "likes": 3, "loc": "Hangzhou, China", "code": "DH3K-7lP_zv"}, {"lat": 29.5161, "lng": 103.3352, "user": "jasmine_pirsch", "likes": 2520, "loc": "Mount Emei", "code": "DPWX-MACCIb"}, {"lat": 31.2047, "lng": 121.554, "user": "darrenkudo", "likes": 321, "loc": "Shanghai Lujiazui", "code": "DRt6Wj1k72c"}, {"lat": 23.0032, "lng": 113.3015, "user": "sasha_gong_", "likes": 1084, "loc": "Guangzhou City ,China", "code": "DQJ_-S1ESiG"}, {"lat": 39.9289, "lng": 116.388, "user": "elikhandro", "likes": 781, "loc": "Beijing, China", "code": "DRxsf7qjQQ0"}, {"lat": 11.8674, "lng": 78.0469, "user": "prpitrip", "likes": 78, "loc": "Wysh", "code": "DUYBAe2AbgA"}, {"lat": 25.309, "lng": 110.2961, "user": "jackcunningham100", "likes": 5, "loc": "Guilin, China", "code": "DUiFQypjFTd"}, {"lat": 31.0456, "lng": 121.4, "user": "jmspht", "likes": 7556, "loc": "Shanghai, Chaina", "code": "DQg0RjWAcU0"}, {"lat": 25.309, "lng": 110.2961, "user": "erliang_coffee", "likes": 3, "loc": "Guilin, China", "code": "DUXfD9mjdT5"}, {"lat": 24.7878, "lng": 114.351, "user": "laowaime", "likes": 1106, "loc": "Shangdong, Jiangxi, China", "code": "CldintzocE1"}, {"lat": 29.5352, "lng": 107.4023, "user": "snapbeforeeat", "likes": 522, "loc": "Chongqing", "code": "DS2SZLFDyBi"}, {"lat": 23.5922, "lng": 102.004, "user": "chinainsider", "likes": 108653, "loc": "Lijiang, Yunnan, China", "code": "DTDi6QUEt-N"}, {"lat": 25.2774, "lng": 110.2898, "user": "winmagphotography", "likes": 512, "loc": "Guilin, China", "code": "C0lyntnpaPY"}, {"lat": 25.2774, "lng": 110.2898, "user": "godwincltang", "likes": 1150, "loc": "Guilin, China", "code": "DFTzLPBS-Ex"}, {"lat": 31.2822, "lng": 120.7424, "user": "jasmine_pirsch", "likes": 1260, "loc": "Suzhou, Jiangsu Province China", "code": "DT2OPHliEtp"}, {"lat": 24.7767, "lng": 110.4885, "user": "sangu", "likes": 605, "loc": "Yangshuo,Guilin,China", "code": "CQgknborcQm"}, {"lat": 31.0755, "lng": 121.4882, "user": "luxyra.co", "likes": 3, "loc": "Shanghai,china", "code": "DUKeMEFiHFU"}, {"lat": 31.238, "lng": 121.4861, "user": "tngkwxptrk", "likes": 140, "loc": "The Bund", "code": "DUS8d7TD0hL"}, {"lat": 21.9833, "lng": 100.817, "user": "aaandreazhao", "likes": 2, "loc": "\u897f\u53cc\u7248\u7eb3\u50a3\u65cf\u81ea\u6cbb\u5dde", "code": "DUlXuYckyKV"}, {"lat": 31.2096, "lng": 121.4647, "user": "cassakating", "likes": 321, "loc": "Shanghai", "code": "DSuYJDHgR85"}, {"lat": 31.2, "lng": 121.5, "user": "darrenkudo", "likes": 933, "loc": "Shanghai, China", "code": "DP0xYrtE2g2"}, {"lat": 30.5846, "lng": 103.9565, "user": "jenxelaw", "likes": 270, "loc": "Chengdu \u6210\u90fd", "code": "DUksTHaEtt9"}, {"lat": 23.5922, "lng": 102.004, "user": "jastsam1", "likes": 381, "loc": "Lijiang, Yunnan, China", "code": "DT2_kn5iGww"}, {"lat": 31.0755, "lng": 121.4882, "user": "lisavshanghae", "likes": 1493, "loc": "Shanghai,china", "code": "DTyw9YnCG4B"}, {"lat": 31.0755, "lng": 121.4882, "user": "lisavshanghae", "likes": 426, "loc": "Shanghai,china", "code": "DUWzLKgCNov"}, {"lat": 31.247, "lng": 121.4827, "user": "powtravel", "likes": 3, "loc": "Bellagio Shanghai", "code": "DQ6XclPEVBT"}, {"lat": 29.8313, "lng": 106.4263, "user": "kat_iita", "likes": 780, "loc": "China\u4e2d\u56fd", "code": "DRxHSCLjC5V"}, {"lat": 29.5352, "lng": 107.4023, "user": "ke.ventures", "likes": 3, "loc": "Chongqing", "code": "DUetvN5E8oY"}, {"lat": 27.1841, "lng": 100.052, "user": "dewlog_", "likes": 535, "loc": "Shangri-La, China", "code": "DUaQZQ4j7jm"}, {"lat": 22.294, "lng": 114.1706, "user": "camarada_capivara", "likes": 4231, "loc": "Hong Kong Cultural Centre", "code": "DUD81C8DeGp"}, {"lat": 24.7764, "lng": 110.4879, "user": "sarioktariani", "likes": 14, "loc": "Lijiang, Yangshuo, Guilin", "code": "DUK21ARkajP"}, {"lat": 32.0139, "lng": 120.8609, "user": "ivonehendarta", "likes": 1303, "loc": "Nantong City, Jiangsu Province, China", "code": "DTggpn7Ex2X"}, {"lat": 29.5352, "lng": 107.4023, "user": "chongqingexperiences", "likes": 3053, "loc": "Chongqing", "code": "DSEi6qJkUZp"}, {"lat": 25.0389, "lng": 102.718, "user": "anqiwang1994", "likes": 22, "loc": "Yunnan, China", "code": "DUe4SsHERSY"}, {"lat": 30.7508, "lng": 120.4786, "user": "maiphuocsang", "likes": 577, "loc": "Wuzhen - \u4e4c\u9547", "code": "DNf5MuNyrE6"}, {"lat": 31.2371, "lng": 121.487, "user": "kimdaoblog", "likes": 878, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DPgQYK5kxNb"}, {"lat": 31.2371, "lng": 121.487, "user": "pignattifederico", "likes": 1174, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DTfrnspiF9a"}, {"lat": 27.1889, "lng": 100.1049, "user": "dewlog_", "likes": 590, "loc": "Tiger Leaping Gorge", "code": "DTpYmnrD47h"}, {"lat": 25.8083, "lng": 110.1525, "user": "gunarto_song", "likes": 621, "loc": "Longji Terraced Scenic Area", "code": "DDKBo8DShWH"}, {"lat": 31.2341, "lng": 121.7545, "user": "shanghaiamericanschool", "likes": 136, "loc": "Shanghai American School (SAS)", "code": "DUk6AW_gV1G"}, {"lat": 45.75, "lng": 126.633, "user": "wanderlustyaventuras", "likes": 30, "loc": "Harbin, China", "code": "DUmNs-zDeD2"}, {"lat": 23.1326, "lng": 113.3263, "user": "jamie1612", "likes": 588, "loc": "Guangzhou Marriott Hotel Tianhe", "code": "DPq7JKdElsl"}, {"lat": -43.53, "lng": 172.62, "user": "faredgestudios", "likes": 1, "loc": "Christchurch, New Zealand", "code": "DUmo3GBE5vg"}, {"lat": 14.5086, "lng": 121.0094, "user": "reginaluque", "likes": 10407, "loc": "Manila International Airport Authority", "code": "DSNpJgzkZxr"}, {"lat": 25.1994, "lng": 55.2741, "user": "itsme_qmar", "likes": 1, "loc": "Dubai, United Arab Emirates", "code": "DUgt6buk7N5"}, {"lat": 29.5352, "lng": 107.4023, "user": "snapbeforeeat", "likes": 4265, "loc": "Chongqing", "code": "DTF4gGpD44S"}, {"lat": 25.309, "lng": 110.2961, "user": "fresphotography", "likes": 26, "loc": "Guilin, China", "code": "DUgqnVVgjUQ"}, {"lat": -7.237, "lng": 112.7505, "user": "helengrube", "likes": 3, "loc": "\u8c6b\u56ed \u4e0a\u6d77 Yuyuan Garden Shanghai", "code": "DUOOf0PCY4I"}, {"lat": 35, "lng": 103, "user": "long.explorer", "likes": 7213, "loc": "China", "code": "Couslohvh1l"}, {"lat": 29.5313, "lng": 106.5576, "user": "chongqing001", "likes": 82, "loc": "Chongching City", "code": "DUjjetvEtIS"}, {"lat": 35, "lng": 103, "user": "sasha_gong_", "likes": 790, "loc": "China", "code": "DPlSm7MEbPa"}, {"lat": 30.2471, "lng": 120.141, "user": "ccchenying.33", "likes": 1783, "loc": "\u676d\u5dde\u897f\u6e56", "code": "DT3c921EyEk"}, {"lat": 27.7011, "lng": 100.7661, "user": "natalieelim", "likes": 509, "loc": "\u6cf8\u6cbd\u6e56 Lugu Lake, Yunnan, China", "code": "DQJlPJWESF8"}, {"lat": 31.9421, "lng": 35.8649, "user": "zzlw0624", "likes": 3, "loc": "Aqaba, Jordan", "code": "DUPqvmdEpRK"}, {"lat": 30.3014, "lng": 120.16, "user": "maaike_canne", "likes": 70, "loc": "Hangzhou, Zhejiang, China", "code": "DUI2PQZDBQc"}, {"lat": 30.7505, "lng": 120.4817, "user": "vylovesfood_", "likes": 1080, "loc": "\u4e4c\u9547 W\u016bzh\u00e8n Watertown", "code": "DTtytSLExVX"}, {"lat": 31.0755, "lng": 121.4882, "user": "hunnywong", "likes": 228, "loc": "Shanghai,china", "code": "DUYMpduDynT"}, {"lat": 39.8551, "lng": 116.6709, "user": "vmonterey_", "likes": 3, "loc": "Universal Studios Resort \u5317\u4eac\u73af\u7403\u4e3b\u9898\u516c\u56ed\u5ea6\u5047\u6751", "code": "DS_8VPRAWV9"}, {"lat": 31.2, "lng": 121.5, "user": "sachinontrip", "likes": 1721, "loc": "Shanghai, China", "code": "DPqzKvCD5Lo"}, {"lat": 31.0456, "lng": 121.4, "user": "katiptiptip", "likes": 274, "loc": "Shanghai, Chaina", "code": "DUdJK1TiZ_q"}, {"lat": 31.2304, "lng": 121.4554, "user": "ikwazzz", "likes": 218, "loc": "\u5f35\u5712", "code": "DUZk3hnAbDu"}, {"lat": 24.7767, "lng": 110.4885, "user": "jerometraveller", "likes": 1603, "loc": "Yangshuo,Guilin,China", "code": "DUEd7g2Ekoz"}, {"lat": 26.924, "lng": 100.2039, "user": "mayuroffthetrack", "likes": 11, "loc": "Shuhe Ancient Town, Lijiang City, Yunnan Province", "code": "DUj4T1vidXu"}, {"lat": 31.2371, "lng": 121.487, "user": "aakanksha_software_mom", "likes": 513, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DSmQBUYCGzw"}, {"lat": 13.7474, "lng": 100.6057, "user": "pawiswow", "likes": 2509, "loc": "Bangkok", "code": "DTSz4VbEmbI"}, {"lat": 31.1834, "lng": 121.4335, "user": "nomadicgrappling", "likes": 7020, "loc": "\u4e0a\u6d77\u4f53\u80b2\u9986", "code": "DUiZF1HgEgW"}, {"lat": 23.1167, "lng": 113.25, "user": "around_the_world_in_8_gig", "likes": 5, "loc": "Guangzhou, China", "code": "DUlGddCE_vS"}, {"lat": 29.9231, "lng": 118.47, "user": "mmingppd_", "likes": 13, "loc": "Guilin, Anhui, China", "code": "DUP__fMEjHz"}, {"lat": 31.232, "lng": 121.4733, "user": "__claudie", "likes": 1132, "loc": "Opartment Shanghai", "code": "DTueB5iE6Qs"}, {"lat": 31.0755, "lng": 121.4882, "user": "luxoeus", "likes": 12327, "loc": "Shanghai,china", "code": "DUBp7_ajaMK"}, {"lat": 29.8313, "lng": 106.4263, "user": "mikechinavlog_2", "likes": 1453, "loc": "China\u4e2d\u56fd", "code": "DUil03qDCiL"}, {"lat": 39.9467, "lng": 116.4101, "user": "tungyen.w", "likes": 3, "loc": "\u5317\u4eac \u4eac\u5146\u5c39", "code": "DUeyIeIEtZN"}, {"lat": 30.5817, "lng": 103.9567, "user": "mithona_chhom", "likes": 3, "loc": "Cheng Du,china", "code": "DUlPBMFgdYR"}, {"lat": 31.1667, "lng": 121.4667, "user": "chinaluxsh", "likes": 3659, "loc": "Shanghai", "code": "DUXOyuKjJxT"}, {"lat": 25.7612, "lng": 110.1251, "user": "xinlinnn", "likes": 3194, "loc": "Longsheng Rice Terrace", "code": "B7_LzxbJJiO"}, {"lat": 35, "lng": 103, "user": "awonderseeker", "likes": 3363, "loc": "China", "code": "DReobz-E_BW"}, {"lat": 31.3, "lng": 120.6, "user": "laowaime", "likes": 1786, "loc": "Suzhou, Jiangsu", "code": "Cjv90_NISzR"}, {"lat": 39.9289, "lng": 116.388, "user": "laowaime", "likes": 573, "loc": "Beijing, China", "code": "CWQZsDtodLA"}, {"lat": 39.9289, "lng": 116.388, "user": "laowaime", "likes": 679, "loc": "Beijing, China", "code": "ChNA_v9j7FQ"}, {"lat": 45.636, "lng": 126.2259, "user": "mllepanggi", "likes": 67, "loc": "Zhongyang Street, Harbin \u4e2d\u9633\u8857\uff0c\u9053\u91cc", "code": "DUN_1NYj9jr"}, {"lat": 29.3989, "lng": 110.6957, "user": "iamhope_nadya", "likes": 3, "loc": "Zhangjiajie Grand Canyon Glass Bridge", "code": "DPjVIXoE225"}, {"lat": 24.7833, "lng": 110.5, "user": "heideexyz", "likes": 1693, "loc": "Yangshuo", "code": "DQlySQWiVUi"}, {"lat": 31.235, "lng": 121.4882, "user": "sundaybyshane", "likes": 879, "loc": "The Bund River - Shanghai, China", "code": "DP6GCyCEQpy"}, {"lat": 29.8313, "lng": 106.4263, "user": "vitti_go", "likes": 3, "loc": "China\u4e2d\u56fd", "code": "DUIsRhuiJLO"}, {"lat": 25.1994, "lng": 55.2741, "user": "w_wtravels", "likes": 7, "loc": "Dubai, United Arab Emirates", "code": "DUK7IOkjPS4"}, {"lat": 31.0755, "lng": 121.4882, "user": "here_film", "likes": 3610, "loc": "Shanghai,china", "code": "DUVhiL_EiMS"}, {"lat": 35, "lng": 103, "user": "helloangelia", "likes": 2117, "loc": "China", "code": "DM_EFNPSuuZ"}, {"lat": 31.2371, "lng": 121.487, "user": "chinatour.id", "likes": 6877, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DRwibDUCXH9"}, {"lat": 22.284, "lng": 114.1623, "user": "vitor.vianna", "likes": 2216, "loc": "\u4e2d\u74b0\u6d77\u6ff1\u6d3b\u52d5\u7a7a\u9593 Central Harbourfront Event Space", "code": "DRehybFkZun"}, {"lat": 39.932, "lng": 116.4286, "user": "fatimadh", "likes": 3, "loc": "Beijing Niujie Mosque \u5ba3\u6b66\u533a\u725b\u885718\u53f7 \u5317\u4eac\u5e02", "code": "DULRy16DwDy"}, {"lat": 26.24, "lng": 109.717, "user": "peachytravels", "likes": 3, "loc": "Furong, Hunan, China", "code": "DUXMHbikQRz"}, {"lat": 31.1667, "lng": 121.4667, "user": "taleh.orucov", "likes": 3015, "loc": "Shanghai", "code": "DUJHSxjiBPP"}, {"lat": 1.2931, "lng": 103.856, "user": "sunshineyiling", "likes": 3, "loc": "Singapore", "code": "DUcdK3zk6rI"}, {"lat": 25.2774, "lng": 110.2898, "user": "giga_mlh", "likes": 590, "loc": "Guilin, China", "code": "DIJFVhhBnbc"}, {"lat": 30.6667, "lng": 104.067, "user": "aorr_jee", "likes": 3, "loc": "Chengdu, Sichuan", "code": "DUiVpVdk-BK"}, {"lat": 21.0304, "lng": 105.8497, "user": "messyhair.travel", "likes": 0, "loc": "Guilin, China", "code": "DUlSCutAakZ"}, {"lat": 31.3, "lng": 120.6, "user": "dieguinidoc", "likes": 32554, "loc": "Suzhou, Jiangsu", "code": "DThi8dOjia4"}, {"lat": 25.808, "lng": 110.1586, "user": "maffo_viajero", "likes": 21, "loc": "\u9f99\u810a\u68af\u7530 Longji rice fields", "code": "DUjQIEXCKXw"}, {"lat": 31.2141, "lng": 121.5458, "user": "zz_yeahtattoo", "likes": 2, "loc": "\u4e16\u7eaa\u516c\u56ed   Century Park", "code": "DUkF2_DERp9"}, {"lat": 29.5352, "lng": 107.4023, "user": "jrachmawan", "likes": 89, "loc": "Chongqing", "code": "DUjtKR6Evrx"}, {"lat": 52.4522, "lng": -1.7324, "user": "zzlw0624", "likes": 3, "loc": "Dead Sea, Jordan", "code": "DUUrRVikSJQ"}, {"lat": 29.5531, "lng": 106.5435, "user": "mychickenworld", "likes": 650, "loc": "Chongqing, China", "code": "DQb4zU6DPeh"}, {"lat": 39.9289, "lng": 116.388, "user": "shawnekoh", "likes": 235, "loc": "Beijing, China", "code": "DUkr4N5k2YE"}, {"lat": 30.6667, "lng": 104.067, "user": "archluxe_", "likes": 1083, "loc": "Chengdu, Sichuan", "code": "DUSKPkAiWs5"}, {"lat": 29.5531, "lng": 106.5435, "user": "jaychongqingtour", "likes": 85, "loc": "Chongqing, China", "code": "DUmMJ-Nkn2t"}, {"lat": 30.6667, "lng": 104.067, "user": "eatandshout", "likes": 3, "loc": "Chengdu, Sichuan", "code": "DSz7jpNklYL"}, {"lat": 30.5833, "lng": 114.267, "user": "bernicecomedy", "likes": 669, "loc": "Wuhan, China", "code": "DRCvTLzD5j7"}, {"lat": 31.0755, "lng": 121.4882, "user": "julia.anashkina", "likes": 343, "loc": "Shanghai,china", "code": "DUiTpJVDCLg"}, {"lat": 29.8313, "lng": 106.4263, "user": "peiying.q", "likes": 7936, "loc": "China\u4e2d\u56fd", "code": "DTp49W5ASkc"}, {"lat": 32.3998, "lng": 119.4412, "user": "yeazi__", "likes": 673, "loc": "\u4e1c\u5173\u8857 Dongguan Street", "code": "DS_kuDhEZy7"}, {"lat": 39.9303, "lng": 116.2977, "user": "akanemsko", "likes": 5285, "loc": "Beijing, China \u5317\u4eac", "code": "DQ7Mpp0D0jH"}, {"lat": 31.2389, "lng": 121.4863, "user": "hannaabond", "likes": 1502, "loc": "The Bund \u5916\u6ee9", "code": "DUZkfzgCLd6"}, {"lat": 39.8551, "lng": 116.6709, "user": "tiffanyapb", "likes": 587, "loc": "Universal Studios Resort \u5317\u4eac\u73af\u7403\u4e3b\u9898\u516c\u56ed\u5ea6\u5047\u6751", "code": "DSEGK5jDxm6"}, {"lat": 27.0983, "lng": 100.175, "user": "bxbyaly97", "likes": 3, "loc": "Jade Dragon Snow Mountain", "code": "DUX6s3Zj2c4"}, {"lat": 29.55, "lng": 106.5069, "user": "natalia_ermolinskaia", "likes": 17, "loc": "Chongqing", "code": "DUdOiw9jLKT"}, {"lat": 25.2706, "lng": 110.292, "user": "andychewwk", "likes": 1053, "loc": "Guilin", "code": "CVpgxmwlDr4"}, {"lat": 29.5651, "lng": 106.575, "user": "hongsie", "likes": 3, "loc": "Hong Ya Dong", "code": "DUarRGVj4nM"}, {"lat": 39.9289, "lng": 116.388, "user": "bilchristian", "likes": 982, "loc": "Beijing, China", "code": "DTkdhb2ib-6"}, {"lat": 28.5029, "lng": 87.0674, "user": "chinadestinations", "likes": 85, "loc": "\u73e0\u7a46\u6717\u739b\u5cf0\u89c2\u666f\u53f0", "code": "DUlqT_XAjEU"}, {"lat": 24.779, "lng": 110.4896, "user": "soohinyeoh", "likes": 18, "loc": "Li River, Yangshuo, Guilin", "code": "DUaj-0Ok7O0"}, {"lat": 29.8313, "lng": 106.4263, "user": "asianlife_fr", "likes": 745, "loc": "China\u4e2d\u56fd", "code": "DRWssyrkmoG"}, {"lat": 22.5479, "lng": 113.9152, "user": "magmagchua", "likes": 441, "loc": "Nantou Ancient City", "code": "DPEP7qukuGw"}, {"lat": 51.4734, "lng": -0.4453, "user": "zooming.world", "likes": 1, "loc": "Great Wall Of China, Beijing, China", "code": "DUC8Kltgf6G"}, {"lat": 31.2371, "lng": 121.487, "user": "gergely_boda", "likes": 3, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DUlAsHUjLUa"}, {"lat": 26.0666, "lng": 43.9809, "user": "winnie_dreamchaser", "likes": 50, "loc": "Sai Kung, Hongkong", "code": "DUcFbn7jGaT"}, {"lat": 37.8013, "lng": 48.9073, "user": "rezanadafi", "likes": 1005, "loc": "Talesh, Gilan, Iran", "code": "CP_P3eQgQsm"}, {"lat": 29.55, "lng": 106.5069, "user": "chinadestinations", "likes": 837, "loc": "Chongqing", "code": "DUP0LoLDMhW"}, {"lat": 30.6714, "lng": 104.1194, "user": "kimmiemaey", "likes": 1668, "loc": "\u6210\u90fd\u4e1c\u90ca\u8bb0\u5fc6", "code": "DTForopEy7E"}, {"lat": 30.6674, "lng": 104.0841, "user": "asianlife_fr", "likes": 449, "loc": "Chengdu, China", "code": "DUX0SuoAm3X"}, {"lat": 24.7767, "lng": 110.4885, "user": "gisellebonet", "likes": 1454, "loc": "Yangshuo,Guilin,China", "code": "CgPQTFFpHXw"}, {"lat": 27.8132, "lng": 114.8837, "user": "ruepush", "likes": 14017, "loc": "Jiangxi, China", "code": "DTWgwPiEvGy"}, {"lat": -6.1302, "lng": 106.887, "user": "theressayolanda", "likes": 92, "loc": "Jakarta, Indonesia", "code": "DULJ855k33z"}, {"lat": 29.5352, "lng": 107.4023, "user": "eunvinae", "likes": 3, "loc": "Chongqing", "code": "DUdCpAYkfuY"}, {"lat": 30.1466, "lng": 120.2235, "user": "shiki_shiki_shiki", "likes": 580, "loc": "\u676d\u5dde\u6781\u5730\u6d77\u6d0b\u516c\u56ed Hangzhou Polar Ocean Park", "code": "DTSfPNbE3KN"}, {"lat": 31.2371, "lng": 121.487, "user": "khunbrian", "likes": 841, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DUUYsIWkqFJ"}, {"lat": 31.0639, "lng": 121.1959, "user": "yiwei_wow", "likes": 6, "loc": "\u5ee3\u5bcc\u6797\u907a\u5740", "code": "DUlfKs2Eg8v"}, {"lat": 29.5531, "lng": 106.5435, "user": "jastsam1", "likes": 434, "loc": "Chongqing, China", "code": "DTVxMrOgdSc"}, {"lat": 31.0755, "lng": 121.4882, "user": "ksyushencia", "likes": 3, "loc": "Shanghai,china", "code": "DUmOcG3gqTt"}, {"lat": 31.3, "lng": 120.6, "user": "laowaime", "likes": 1613, "loc": "Suzhou, Jiangsu", "code": "Cj27T3joIu6"}, {"lat": 34.2735, "lng": 108.9179, "user": "ozkwang", "likes": 2, "loc": "Xi'an City", "code": "DUaVergka2k"}, {"lat": 31.0755, "lng": 121.4882, "user": "cyncynti", "likes": 764, "loc": "Shanghai,china", "code": "DULO2fBjPKG"}, {"lat": 35, "lng": 103, "user": "joycetldr", "likes": 503, "loc": "China", "code": "DQtEvwFETe0"}, {"lat": 31.6542, "lng": 105.041, "user": "theawkwardtraveller", "likes": 145, "loc": "Wolong, Sichuan, China", "code": "DUkkUHxgepk"}, {"lat": 31.2371, "lng": 121.487, "user": "chinatour.id", "likes": 1808, "loc": "Shanghai \u4e0a\u6d77 \u5916\u7058", "code": "DSkM0yDCRXr"}, {"lat": 29.8313, "lng": 106.4263, "user": "salihupoovakkattil", "likes": 97, "loc": "China\u4e2d\u56fd", "code": "DUZeg88k-ds"}, {"lat": 35.6698, "lng": 139.7377, "user": "issacarcosta", "likes": 1357, "loc": "Tokyo - Japan \u6771\u4eac", "code": "DRXO3d2ERtD"}, {"lat": 30.703, "lng": 103.231, "user": "leohammerd", "likes": 4, "loc": "Xiling Snow Mountain \u897f\u5cad\u96ea\u5c71", "code": "DUVqPb2EkE1"}, {"lat": 13.7522, "lng": 100.494, "user": "pawiswow", "likes": 600, "loc": "Bangkok, Thailand", "code": "DTdD6SGEhw-"}, {"lat": 25.1971, "lng": 55.2742, "user": "katarina_mokolene", "likes": 3, "loc": "Burj Khalifa & Dubai Mall, Dubai, UAE", "code": "DUdgHoTDG04"}, {"lat": 35, "lng": 103, "user": "happygomk", "likes": 501, "loc": "China", "code": "DS1wtCdCdm3"}, {"lat": 10.8018, "lng": 106.7213, "user": "celine.chengg", "likes": 1701, "loc": "\u4e0a\u6d77", "code": "DTnKDtij78s"}, {"lat": 31.0755, "lng": 121.4882, "user": "peihankng", "likes": 665, "loc": "Shanghai,china", "code": "DUNiqa0Ese6"}, {"lat": 25.2774, "lng": 110.2898, "user": "josaysmile", "likes": 3, "loc": "Guilin, China", "code": "DUGhER5gd23"}, {"lat": 24.7767, "lng": 110.4885, "user": "jasmine_pirsch", "likes": 4558, "loc": "Yangshuo,Guilin,China", "code": "DJgmwE-tt5d"}, {"lat": 25.2706, "lng": 110.292, "user": "a_lanepantoja", "likes": 3, "loc": "Guilin", "code": "DUPnJ1gCP1y"}, {"lat": 45.7656, "lng": 126.6139, "user": "cyncynti", "likes": 3, "loc": "Harbin Ice & Snow Festival", "code": "DTIuZGnDMVl"}, {"lat": 31.0755, "lng": 121.4882, "user": "vaughnvoyage", "likes": 3, "loc": "Shanghai,china", "code": "DUhM5VEE6AU"}, {"lat": 25.2774, "lng": 110.2898, "user": "traveler_ash", "likes": 481, "loc": "Guilin, China", "code": "CnmSA3PrGhD"}, {"lat": 31.1667, "lng": 121.4667, "user": "jkusno", "likes": 743, "loc": "Shanghai", "code": "DTb0AH0Ekx6"}, {"lat": 45.75, "lng": 126.633, "user": "puteri_atikah", "likes": 3, "loc": "Harbin, China", "code": "DUlDW2KE7BY"}, {"lat": 31.2407, "lng": 121.4849, "user": "hammerchen1113", "likes": 935, "loc": "Swatch Art Peace Hotel Artist Residency", "code": "DSkPZGnDJZa"}, {"lat": 40.3542, "lng": 116.0066, "user": "_we.travel_", "likes": 526, "loc": "\u516b\u9054\u5dba\u9577\u57ce Badaling Great Wall", "code": "DOLTFbwCQNK"}, {"lat": 39.8973, "lng": 116.4625, "user": "taylor.1161", "likes": 97031, "loc": "\u5317\u4eac - Beijing, \u4e2d\u56fd", "code": "DT1lWjngdKp"}, {"lat": 29.5352, "lng": 107.4023, "user": "aurorakamarga", "likes": 3, "loc": "Chongqing", "code": "DUlRkEeASWC"}, {"lat": 29.9231, "lng": 118.47, "user": "mmingppd_", "likes": 11, "loc": "Guilin, Anhui, China", "code": "DUVhig7ku5p"}, {"lat": 31.2131, "lng": 121.4233, "user": "sena_ling", "likes": 6269, "loc": "Shanghai \u957f\u5b81\u533a", "code": "DS9JkENk7P-"}, {"lat": 29.3167, "lng": 110.4298, "user": "iamhope_nadya", "likes": 6201, "loc": "Zhangjiajie National Forest Park", "code": "DPdeaRZEW4K"}, {"lat": 30.3743, "lng": -86.2368, "user": "eva.whatalife", "likes": 62, "loc": "Santa Rosa Beach, Florida", "code": "DUZooiQgOLo"}];
+
+const ENGAGEMENT = {"0-100": 2150, "100-1K": 4400, "1K-10K": 3300, "10K-100K": 1500, "100K+": 266};
+
+const TOP_TAGS = [
+  ["#china", 1180], ["#chinatravel", 770], ["#travelchina", 630],
+  ["#travel", 520], ["#taipeitravel", 520], ["#chengdu", 500],
+  ["#shanghai", 480], ["#beijing", 460], ["#visitchina", 450],
+  ["#asia", 340], ["#singapore", 320], ["#chinatrip", 310],
+  ["#explorechina", 290], ["#lifestyle", 280], ["#food", 260]
+];
+
+const TIMELINE = [
+  ["2025-02", 110], ["2025-03", 180], ["2025-04", 10], ["2025-05", 50],
+  ["2025-06", 120], ["2025-07", 20], ["2025-08", 20], ["2025-09", 150],
+  ["2025-10", 150], ["2025-11", 750], ["2025-12", 630],
+  ["2026-01", 2150], ["2026-02", 3910]
+];
+
+const TOP_POSTS = [
+  {likes: 2000000, user: "mmoonstar", caption: "And I woke up in Shanghai...", comments: 9578},
+  {likes: 777675, user: "lifeinchina41", caption: "When people think chongqing drone show is fake but china is in 2070...", comments: 3945},
+  {likes: 772734, user: "douyin_trnd", caption: "Trending Now: Chinese girl trends taking over Douyin...", comments: 1495},
+  {likes: 549657, user: "cappuccinoccino", caption: "Washing machine in China have separated area for underwear...", comments: 8718},
+  {likes: 500768, user: "just.chinatours", caption: "The most intense stage moment I've ever seen!", comments: 2466},
+  {likes: 380916, user: "ur.chinese.unc", caption: "China's insane beauty standards. Wdyt, doing too much?", comments: 22545},
+  {likes: 370196, user: "guilintourguidewinter", caption: "If you need a customized Guilin travel itinerary...", comments: 315},
+  {likes: 334746, user: "china_b.t.w", caption: "Chinese chill just evolved. Retired uncles entered their park era.", comments: 5647},
+];
+
+// ═══════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════
+
+const map = L.map('map', {
+  zoomControl: true,
+  scrollWheelZoom: true
+}).setView([30, 110], 4);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO',
+  maxZoom: 18
+}).addTo(map);
+
+const markers = L.markerClusterGroup({
+  maxClusterRadius: 50,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false
+});
+
+const pinIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:8px;height:8px;background:#6366f1;border-radius:50%;box-shadow:0 0 6px rgba(99,102,241,0.6);"></div>',
+  iconSize: [8, 8],
+  iconAnchor: [4, 4]
+});
+
+MAP_MARKERS.forEach(m => {
+  const marker = L.marker([m.lat, m.lng], {icon: pinIcon});
+  marker.bindPopup(
+    `<b>@${m.user}</b><br>${m.loc}<br><span style="color:#f472b6">${m.likes.toLocaleString()} likes</span>`
+  );
+  markers.addLayer(marker);
+});
+map.addLayer(markers);
+
+// ═══════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════
+
+const chartDefaults = {
+  color: '#6b6b80',
+  borderColor: '#1e1e2e',
+  font: { family: "'SF Mono', monospace", size: 11 }
+};
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.font.family = chartDefaults.font.family;
+Chart.defaults.font.size = chartDefaults.font.size;
+
+// Engagement
+new Chart(document.getElementById('engagementChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(ENGAGEMENT),
+    datasets: [{
+      data: Object.values(ENGAGEMENT),
+      backgroundColor: ['#1e1e2e', '#6366f1', '#a78bfa', '#f472b6', '#fb923c'],
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { padding: 12, usePointStyle: true, pointStyleWidth: 10 }
+      }
+    },
+    cutout: '60%'
+  }
+});
+
+// Hashtags
+new Chart(document.getElementById('hashtagChart'), {
+  type: 'bar',
+  data: {
+    labels: TOP_TAGS.map(t => t[0]),
+    datasets: [{
+      data: TOP_TAGS.map(t => t[1]),
+      backgroundColor: TOP_TAGS.map((_, i) => {
+        const colors = ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'];
+        return colors[Math.min(Math.floor(i / 3), colors.length - 1)];
+      }),
+      borderWidth: 0,
+      borderRadius: 4,
+      barPercentage: 0.7
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e1e2e' }, ticks: { display: true } },
+      y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Timeline
+new Chart(document.getElementById('timelineChart'), {
+  type: 'line',
+  data: {
+    labels: TIMELINE.map(t => t[0]),
+    datasets: [{
+      data: TIMELINE.map(t => t[1]),
+      borderColor: '#6366f1',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#6366f1',
+      pointBorderWidth: 0,
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e1e2e' } },
+      y: { grid: { color: '#1e1e2e' }, beginAtZero: true }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════
+// TOP POSTS TABLE
+// ═══════════════════════════════════════════
+
+const tbody = document.getElementById('topPostsBody');
+TOP_POSTS.forEach(p => {
+  const fmt = n => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? (n/1000).toFixed(0) + 'K' : n;
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td class="likes">${fmt(p.likes)}</td>
+    <td class="username">@${p.user}</td>
+    <td class="caption">${p.caption}</td>
+    <td>${fmt(p.comments)}</td>
+  `;
+  tbody.appendChild(row);
+});
+</script>
+</body>
+</html>

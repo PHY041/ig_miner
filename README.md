@@ -10,7 +10,22 @@ ig-miner auth            # one-time: extract cookies from your Chrome
 ig-miner scrape travel   # collect public posts from #travel
 ```
 
+<p align="center">
+  <img src="demo/demo.gif" alt="ig_miner terminal demo" width="600">
+</p>
+
 > **Note**: This tool is intended for academic research, data science, and educational purposes. It only accesses **publicly available data** through your own authenticated Instagram session. Please read the [Responsible Use](#responsible-use) section before getting started.
+
+### Real dataset collected with ig_miner
+
+<p align="center">
+  <img src="demo/dashboard_hero.png" alt="ig_miner dataset dashboard — 11,616 posts, 4,222 users, geotagged map" width="800">
+</p>
+
+<p align="center">
+  <em>11,616 posts across 137 hashtags — collected in under 24 hours with zero bans.
+  <a href="demo/dashboard.html">View full interactive dashboard</a></em>
+</p>
 
 ---
 
